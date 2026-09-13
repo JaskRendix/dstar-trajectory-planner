@@ -5,7 +5,6 @@ fn main() {
     let height = 60;
     let mut map_data = vec![0u8; (width * height) as usize];
 
-    // Create a diagonal barrier instead of a straight line
     for i in 20..40 {
         let idx = (i * width + i) as usize;
         map_data[idx] = 100;
@@ -26,7 +25,6 @@ fn main() {
     let mut planner = DStarGlobalPlanner::new();
     planner.initialize(width, height, &map_data, false, "");
 
-    // Different start and goal across the diagonal barrier
     let start = (10.0, 50.0);
     let goal = (50.0, 10.0);
 
@@ -37,7 +35,37 @@ fn main() {
 
     match planner.make_plan(start, goal) {
         Ok(path) => {
-            println!("Alternative path generated with {} waypoints:", path.len());
+            println!("Alternative path generated with {} waypoints.", path.len());
+
+            println!("\nPath waypoints:");
+            for (i, p) in path.iter().enumerate() {
+                println!("{:3}: {:?}", i, p);
+            }
+
+            let mut grid = map_data.clone();
+
+            let w = width as usize;
+
+            for (x, y) in &path {
+                let idx = (*y as usize) * w + (*x as usize);
+                grid[idx] = 200;
+            }
+
+            println!("\nGrid visualization:");
+            for y in 0..height {
+                for x in 0..width {
+                    let v = grid[(y * width + x) as usize];
+                    let ch = if v >= 200 {
+                        '*' // path
+                    } else if v >= 100 {
+                        '#' // obstacle
+                    } else {
+                        '.' // free
+                    };
+                    print!("{}", ch);
+                }
+                println!();
+            }
         }
         Err(e) => {
             println!("Path planning failed: {}", e);

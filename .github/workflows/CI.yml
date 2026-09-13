@@ -29,3 +29,7 @@ jobs:
         
       - name: Run tests
         run: cargo test --all --verbose
+
+      - name: Run examples
+        run: |
+          cargo run --example test_planner
