@@ -109,6 +109,98 @@ cargo run --example minimal
 
 ---
 
+### **CLI Interface**
+
+The project includes a configurable CLI tool (`src/main.rs`) that exposes all major planner parameters at runtime.  
+This allows testing different optimization settings, neighbor modes, erosion, and map sizes without modifying code.
+
+Run the CLI:
+
+```bash
+cargo run -- <options>
+```
+
+Show all available flags:
+
+```bash
+cargo run -- --help
+```
+
+### **Available CLI Parameters**
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--repulsion-gain <f64>` | `50.0` | Potential‑field repulsion gain |
+| `--potential-radius <i32>` | `10` | Radius for potential‑field smoothing |
+| `--cutoff-distance <i32>` | `16` | Ray‑tracing cutoff distance |
+| `--occupancy-threshold <i32>` | `64` | Costmap obstacle threshold |
+| `--neighbor-mode <four|eight>` | `eight` | Connectivity mode |
+| `--erosion <bool>` | `false` | Enable map erosion |
+| `--erosion-gap <i64>` | `2` | Erosion radius |
+| `--start-x <f64>` | `0.0` | Start coordinate X |
+| `--start-y <f64>` | `0.0` | Start coordinate Y |
+| `--goal-x <f64>` | `50.0` | Goal coordinate X |
+| `--goal-y <f64>` | `50.0` | Goal coordinate Y |
+| `--width <i64>` | `60` | Map width |
+| `--height <i64>` | `60` | Map height |
+| `--paths-file <path>` | `""` | JSON virtual paths file |
+| `--enable-ready-paths <bool>` | `false` | Enable predefined JSON paths |
+| `--verbose` | off | Enable verbose logging |
+
+### **Example Usage**
+
+Run with diagonal mode and custom smoothing:
+
+```bash
+cargo run -- \
+    --neighbor-mode eight \
+    --repulsion-gain 80 \
+    --potential-radius 15 \
+    --cutoff-distance 20 \
+    --verbose
+```
+
+Run with Manhattan mode and erosion:
+
+```bash
+cargo run -- \
+    --neighbor-mode four \
+    --erosion true \
+    --erosion-gap 3
+```
+
+Run with custom start/goal:
+
+```bash
+cargo run -- \
+    --start-x 5 --start-y 5 \
+    --goal-x 55 --goal-y 10
+```
+
+---
+
+## Usage
+
+Run the planner:
+
+```bash
+cargo run
+```
+
+Show CLI options:
+
+```bash
+cargo run -- --help
+```
+
+Run benchmarks:
+
+```bash
+cargo bench
+```
+
+---
+
 ## Benchmarks
 
 Criterion benchmarks are provided under `benches/`:
@@ -142,25 +234,3 @@ Example results on a mid‑range laptop:
 | 500×500 map | ~2.95 s | ~85 ms |
 
 Actual performance depends on hardware, map structure, and whether path optimization is enabled.
-
----
-
-## Usage
-
-Run the planner:
-
-```bash
-cargo run
-```
-
-Show CLI options:
-
-```bash
-cargo run -- --help
-```
-
-Run benchmarks:
-
-```bash
-cargo bench
-```

@@ -89,6 +89,26 @@ impl DStarGlobalPlanner {
         self.verbose = value;
     }
 
+    pub fn set_repulsion_gain(&mut self, value: f64) {
+        self.repulsion_gain = value;
+    }
+
+    pub fn set_r_field(&mut self, value: i32) {
+        self.potential_field_radius = value;
+    }
+
+    pub fn set_cutoff_distance(&mut self, value: i32) {
+        self.cutoff_distance = value;
+    }
+
+    pub fn set_erosion(&mut self, value: bool) {
+        self.erosion = value;
+    }
+
+    pub fn set_erosion_gap(&mut self, value: i64) {
+        self.erosion_gap = value;
+    }
+
     pub fn parse_paths_json(&mut self, filename: &str) {
         if !Path::new(filename).exists() {
             if self.verbose {

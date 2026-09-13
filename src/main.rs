@@ -1,37 +1,127 @@
-use dstar_trajectory_planner::{DStarGlobalPlanner, map_loader::load_mock_map};
+use clap::Parser;
+use dstar_trajectory_planner::{DStarGlobalPlanner, NeighborMode};
 
-const START_X: f64 = 5.0;
-const START_Y: f64 = 5.0;
-const GOAL_X: f64 = 45.0;
-const GOAL_Y: f64 = 45.0;
-const ENABLE_READY_PATHS: bool = false;
-const PATHS_FILE_PATH: &str = "";
+#[derive(Parser)]
+#[command(name = "dstar-cli", about = "CLI interface for D* trajectory planner")]
+struct Args {
+    #[arg(long, default_value = "50.0")]
+    repulsion_gain: f64,
+
+    #[arg(long, default_value = "10")]
+    potential_radius: i32,
+
+    #[arg(long, default_value = "16")]
+    cutoff_distance: i32,
+
+    #[arg(long, default_value = "64")]
+    occupancy_threshold: i32,
+
+    #[arg(long, default_value = "eight")]
+    neighbor_mode: String,
+
+    #[arg(long)]
+    verbose: bool,
+
+    #[arg(long, default_value = "false")]
+    erosion: bool,
+
+    #[arg(long, default_value = "2")]
+    erosion_gap: i64,
+
+    #[arg(long, default_value = "0.0")]
+    start_x: f64,
+
+    #[arg(long, default_value = "0.0")]
+    start_y: f64,
+
+    #[arg(long, default_value = "50.0")]
+    goal_x: f64,
+
+    #[arg(long, default_value = "50.0")]
+    goal_y: f64,
+
+    #[arg(long, default_value = "60")]
+    width: i64,
+
+    #[arg(long, default_value = "60")]
+    height: i64,
+
+    #[arg(long, default_value = "")]
+    paths_file: String,
+
+    #[arg(long, default_value = "false")]
+    enable_ready_paths: bool,
+}
 
 fn main() {
-    let (width, height, map_data) = load_mock_map();
+    let args = Args::parse();
 
+    // Build map
+    let mut map_data = vec![0u8; (args.width * args.height) as usize];
+    for i in 20..40 {
+        let idx = (i * args.width + i) as usize;
+        map_data[idx] = args.occupancy_threshold as u8;
+    }
+
+    // Planner
     let mut planner = DStarGlobalPlanner::new();
+    planner.set_verbose(args.verbose);
+    planner.set_repulsion_gain(args.repulsion_gain);
+    planner.set_r_field(args.potential_radius);
+    planner.set_cutoff_distance(args.cutoff_distance);
+    planner.set_erosion(args.erosion);
+    planner.set_erosion_gap(args.erosion_gap);
+
+    match args.neighbor_mode.as_str() {
+        "four" => planner.set_neighbor_mode(NeighborMode::Four),
+        "eight" => planner.set_neighbor_mode(NeighborMode::Eight),
+        _ => {
+            println!(
+                "Unknown neighbor mode '{}', using default (eight)",
+                args.neighbor_mode
+            );
+            planner.set_neighbor_mode(NeighborMode::Eight);
+        }
+    }
+
     planner.initialize(
-        width,
-        height,
+        args.width,
+        args.height,
         &map_data,
-        ENABLE_READY_PATHS,
-        PATHS_FILE_PATH,
+        args.enable_ready_paths,
+        &args.paths_file,
     );
 
-    let start = (START_X, START_Y);
-    let goal = (GOAL_X, GOAL_Y);
+    let start = (args.start_x, args.start_y);
+    let goal = (args.goal_x, args.goal_y);
 
-    println!("Calculating trajectory from {:?} to {:?}...", start, goal);
+    println!("Running D* from {:?} to {:?}", start, goal);
 
     match planner.make_plan(start, goal) {
         Ok(path) => {
-            println!(
-                "Trajectory successfully generated with {} waypoints:",
-                path.len()
-            );
-            for (i, pt) in path.iter().enumerate() {
-                println!("  [{}] X: {}, Y: {}", i, pt.0, pt.1);
+            println!("Generated {} waypoints:", path.len());
+
+            let mut grid = map_data.clone();
+            let w = args.width as usize;
+
+            for (x, y) in &path {
+                let idx = (*y as usize) * w + (*x as usize);
+                grid[idx] = 200;
+            }
+
+            for y in 0..args.height {
+                for x in 0..args.width {
+                    let v = grid[(y * args.width + x) as usize];
+                    let ch = if v >= 200 {
+                        '*'
+                    } else if v >= args.occupancy_threshold as u8 {
+                        '#'
+                    } else {
+                        '.'
+                    };
+                    print!("{}", ch);
+                }
+                println!();
             }
         }
         Err(e) => {
