@@ -8,6 +8,12 @@ pub enum StateTag {
     Obstacle,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum NeighborMode {
+    Four,
+    Eight,
+}
+
 #[derive(Clone, Debug)]
 pub struct StatePoint {
     pub x: i64,
@@ -117,21 +123,35 @@ impl StateMap {
         self.idx(x, y).map(|i| &self.grid[i])
     }
 
-    pub fn neighbors(&self, x: i64, y: i64) -> Vec<(i64, i64)> {
+    pub fn neighbors(&self, x: i64, y: i64, mode: NeighborMode) -> Vec<(i64, i64)> {
         let mut result = Vec::with_capacity(8);
 
-        for dx in -1..=1 {
-            for dy in -1..=1 {
-                if dx == 0 && dy == 0 {
-                    continue;
-                }
+        // 4‑connected
+        const FOUR: &[(i64, i64)] = &[(1, 0), (-1, 0), (0, 1), (0, -1)];
 
-                let nx = x + dx;
-                let ny = y + dy;
+        // 8‑connected (includes diagonals)
+        const EIGHT: &[(i64, i64)] = &[
+            (1, 0),
+            (-1, 0),
+            (0, 1),
+            (0, -1),
+            (1, 1),
+            (1, -1),
+            (-1, 1),
+            (-1, -1),
+        ];
 
-                if nx >= 0 && nx < self.width && ny >= 0 && ny < self.height {
-                    result.push((nx, ny));
-                }
+        let deltas = match mode {
+            NeighborMode::Four => FOUR,
+            NeighborMode::Eight => EIGHT,
+        };
+
+        for (dx, dy) in deltas {
+            let nx = x + dx;
+            let ny = y + dy;
+
+            if nx >= 0 && nx < self.width && ny >= 0 && ny < self.height {
+                result.push((nx, ny));
             }
         }
 

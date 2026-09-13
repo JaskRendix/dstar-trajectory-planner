@@ -2,9 +2,10 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 
 use crate::dstar_error::DStarError;
-use crate::state_map::{StateMap, StateTag};
+use crate::state_map::{NeighborMode, StateMap, StateTag};
 
 pub struct DStar {
+    neighbor_mode: NeighborMode,
     map: StateMap,
     origin: Option<(i64, i64)>,
     destination: Option<(i64, i64)>,
@@ -17,6 +18,7 @@ pub struct DStar {
 impl DStar {
     pub fn new(map: StateMap) -> Self {
         Self {
+            neighbor_mode: NeighborMode::Eight,
             map,
             origin: None,
             destination: None,
@@ -25,6 +27,10 @@ impl DStar {
             r_field: 5,
             repulsion_gain: 20.0,
         }
+    }
+
+    pub fn set_neighbor_mode(&mut self, mode: NeighborMode) {
+        self.neighbor_mode = mode;
     }
 
     pub fn set_cutoff_distance(&mut self, val: i32) {
@@ -151,7 +157,7 @@ impl DStar {
         let k_old = self.get_kmin();
         let _ = self.pop_state();
 
-        let neighbors = self.map.neighbors(x_coord.0, x_coord.1);
+        let neighbors = self.map.neighbors(x_coord.0, x_coord.1, self.neighbor_mode);
         let x_cost_actual = self
             .map
             .point_ref(x_coord.0, x_coord.1)
@@ -181,7 +187,7 @@ impl DStar {
             }
         }
 
-        let neighbors = self.map.neighbors(x_coord.0, x_coord.1);
+        let neighbors = self.map.neighbors(x_coord.0, x_coord.1, self.neighbor_mode);
         for y_coord in neighbors {
             let y_point = self.map.point_ref(y_coord.0, y_coord.1).unwrap();
             let y_tag = y_point.tag;

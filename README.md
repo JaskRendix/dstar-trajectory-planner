@@ -1,4 +1,4 @@
-# **D\* Dynamic Trajectory Planner (Rust Port)**
+# D\* Dynamic Trajectory Planner (Rust Port)
 
 A Rust re‑implementation of the original ROS C++ global trajectory planner based on the D\* incremental search algorithm.
 
@@ -10,59 +10,76 @@ Upstream C++ repository:
 
 ---
 
-## **Overview**
+## Overview
 
-This Rust port provides a clean, predictable, and self‑contained implementation of the D\* global planner.  
-All ROS2 dependencies have been removed, and the planner is exposed as a simple Rust crate with optional CLI examples.
+This Rust port provides a clean and predictable implementation of the D\* global planner.  
+All ROS2 dependencies have been removed, and the planner is exposed as a Rust crate with optional CLI examples.
 
-The Rust version includes the **full trajectory pipeline** from the original C++ implementation:
+The Rust version includes the full trajectory pipeline from the original C++ implementation:
 
-- **Draft path** (backpointer chain)  
-- **Reduced path** (ray‑tracing visibility pruning)  
-- **Optimized path** (potential‑field smoothing using repulsion forces)
+- Draft path (backpointer chain)  
+- Reduced path (ray‑tracing visibility pruning)  
+- Optimized path (potential‑field smoothing using repulsion forces)
 
-The planner also supports:
+The planner supports:
 
 - JSON virtual walls and virtual paths  
-- safe, bounds‑checked map access  
-- flattened grid storage for cache‑efficient traversal  
+- bounds‑checked map access  
+- flattened grid storage  
 - binary‑heap open list  
 - multiple examples and Criterion benchmarks  
 
-These additions produce smoother, more natural trajectories and match the behavior of the upstream algorithm.
+These components match the behavior of the upstream algorithm.
 
 ---
 
-## **Key Differences from the C++ Version**
+## Key Differences from the C++ Version
 
-### **Standalone Rust Engine**
-Runs as a pure Rust library with optional CLI examples.  
-No ROS2 build system, no navigation stack dependencies.
+### Standalone Rust Engine
+Runs as a Rust library with optional CLI examples.  
+No ROS2 build system or navigation stack dependencies.
 
-### **Flattened Grid**
-The nested vector structure is replaced with a single contiguous `Vec<StatePoint>`.  
+### Flattened Grid
+The nested vector structure is replaced with a contiguous `Vec<StatePoint>`.  
 This improves cache locality and simplifies indexing.
 
-### **Binary‑Heap Open List**
-The open list uses `BinaryHeap<Reverse<(k, x, y)>>`, reducing insertion/extraction overhead compared to repeated sorting.
+### Binary‑Heap Open List
+The open list uses `BinaryHeap<Reverse<(k, x, y)>>`, reducing insertion and extraction cost.
 
-### **Safe Map Access**
-All map access is bounds‑checked, preventing panics and returning structured errors for invalid states.
+### Safe Map Access
+All map access is bounds‑checked and returns structured errors for invalid states.
 
-### **Full Path Optimization Pipeline**
-The Rust port includes the complete post‑processing stages:
+### Full Path Optimization Pipeline
+Includes the complete post‑processing stages:
 
-- **Ray‑tracing reduction** using `cutoff_distance`  
-- **Potential‑field smoothing** using `repulsion_gain` and `potential_field_radius`  
+- Ray‑tracing reduction using `cutoff_distance`  
+- Potential‑field smoothing using `repulsion_gain` and `potential_field_radius`
 
-These stages were part of the original C++ planner but are often omitted in ports.
+### JSON Virtual Walls
+Virtual walls and virtual paths are loaded through `serde`.
 
-### **JSON Virtual Walls**
-Virtual walls and virtual paths are loaded through `serde`, allowing external configuration of passable and non‑passable zones.
+### Neighbor Modes
+The planner supports configurable neighbor connectivity:
+
+- Four‑connected (Manhattan)  
+- Eight‑connected (diagonal)
+
+This affects path shape, obstacle avoidance, and cost propagation.
+
+Neighbor mode can be selected through:
+
+```rust
+planner.set_neighbor_mode(NeighborMode::Four);
+planner.set_neighbor_mode(NeighborMode::Eight);
+```
+
+The default mode is `Eight`.
+
+A dedicated example is available in `examples/neighbor_modes.rs`.
 
 ---
 
-## **Parameters**
+## Parameters
 
 | Parameter | Unit | Default | Description |
 | --- | --- | --- | --- |
@@ -74,25 +91,15 @@ Virtual walls and virtual paths are loaded through `serde`, allowing external co
 | `trajectory_optimizer/potential_field_radius` | cells | `10` | Radius for potential‑field smoothing |
 | `erosion/enable` | - | `false` | Enable map erosion |
 | `erosion/erosion_gap` | cells | `2` | Erosion gap |
+| `neighbor_mode` | - | `Eight` | Connectivity mode (Four or Eight) |
 
 ---
 
-## **Examples**
+## Examples
 
 All examples are documented in:
 
-**`examples/README.md`**
-
-This includes:
-
-- basic usage  
-- dynamic obstacles  
-- maze navigation  
-- virtual walls  
-- potential‑field optimization  
-- weighted costmaps  
-- neighbor modes  
-- large‑map stress tests  
+`examples/README.md`
 
 Run any example:
 
@@ -102,7 +109,7 @@ cargo run --example minimal
 
 ---
 
-## **Benchmarks**
+## Benchmarks
 
 Criterion benchmarks are provided under `benches/`:
 
@@ -122,10 +129,10 @@ cargo bench
 
 ---
 
-## **Performance Notes**
+## Performance Notes
 
-The binary‑heap open list significantly reduces the cost of D\* state management.  
-Flattened grid storage and safe neighbor traversal further improve performance.
+The binary‑heap open list reduces the cost of D\* state management.  
+Flattened grid storage and safe neighbor traversal improve performance.
 
 Example results on a mid‑range laptop:
 
@@ -138,7 +145,7 @@ Actual performance depends on hardware, map structure, and whether path optimiza
 
 ---
 
-## **Usage**
+## Usage
 
 Run the planner:
 

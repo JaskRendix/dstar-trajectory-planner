@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::dstar::DStar;
 use crate::dstar_error::DStarError;
-use crate::state_map::{StateMap, StateTag};
+use crate::state_map::{NeighborMode, StateMap, StateTag};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct VPathEntry {
@@ -19,6 +19,7 @@ struct MapJson {
 }
 
 pub struct DStarGlobalPlanner {
+    neighbor_mode: NeighborMode,
     initialized: bool,
     #[allow(dead_code)]
     state_grid: Option<StateMap>,
@@ -55,6 +56,7 @@ impl Default for DStarGlobalPlanner {
 impl DStarGlobalPlanner {
     pub fn new() -> Self {
         Self {
+            neighbor_mode: NeighborMode::Eight,
             initialized: false,
             state_grid: None,
             generator: None,
@@ -77,6 +79,10 @@ impl DStarGlobalPlanner {
 
             verbose: false, // default: silent
         }
+    }
+
+    pub fn set_neighbor_mode(&mut self, mode: NeighborMode) {
+        self.neighbor_mode = mode;
     }
 
     pub fn set_verbose(&mut self, value: bool) {

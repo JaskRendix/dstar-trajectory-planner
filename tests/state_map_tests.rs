@@ -1,4 +1,4 @@
-use dstar_trajectory_planner::state_map::{StateMap, StatePoint, StateTag};
+use dstar_trajectory_planner::state_map::{NeighborMode, StateMap, StatePoint, StateTag};
 
 #[test]
 fn test_state_map_dimensions() {
@@ -28,16 +28,16 @@ fn test_point_access_and_bounds() {
 fn test_neighbor_generation_counts() {
     let map = StateMap::new(5, 5);
 
-    let top_left_neighbors = map.neighbors(0, 0);
+    let top_left_neighbors = map.neighbors(0, 0, NeighborMode::Eight);
     assert_eq!(top_left_neighbors.len(), 3);
     assert!(top_left_neighbors.contains(&(1, 0)));
     assert!(top_left_neighbors.contains(&(0, 1)));
     assert!(top_left_neighbors.contains(&(1, 1)));
 
-    let edge_neighbors = map.neighbors(2, 0);
+    let edge_neighbors = map.neighbors(2, 0, NeighborMode::Eight);
     assert_eq!(edge_neighbors.len(), 5);
 
-    let inner_neighbors = map.neighbors(2, 2);
+    let inner_neighbors = map.neighbors(2, 2, NeighborMode::Eight);
     assert_eq!(inner_neighbors.len(), 8);
 }
 
