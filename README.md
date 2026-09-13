@@ -1,4 +1,4 @@
-# D\* Dynamic Trajectory Planner (Rust Port)
+# **D\* Dynamic Trajectory Planner (Rust Port)**
 
 A Rust re‑implementation of the original ROS C++ global trajectory planner based on the D\* incremental search algorithm.
 
@@ -10,61 +10,122 @@ Upstream C++ repository:
 
 ---
 
-## Overview
+## **Overview**
 
-The Rust port focuses on a clear and predictable implementation of D\*.  
-The codebase removes ROS2 dependencies and exposes the planner as a simple Rust crate.  
-The planner supports JSON configuration for virtual walls and passable or non‑passable zones.
+This Rust port provides a clean, predictable, and self‑contained implementation of the D\* global planner.  
+All ROS2 dependencies have been removed, and the planner is exposed as a simple Rust crate with optional CLI examples.
 
-The Rust version uses a flattened grid, safe neighbor traversal, and a binary‑heap open list.  
-These changes reduce memory overhead and improve runtime behavior on large maps.
+The Rust version includes the **full trajectory pipeline** from the original C++ implementation:
+
+- **Draft path** (backpointer chain)  
+- **Reduced path** (ray‑tracing visibility pruning)  
+- **Optimized path** (potential‑field smoothing using repulsion forces)
+
+The planner also supports:
+
+- JSON virtual walls and virtual paths  
+- safe, bounds‑checked map access  
+- flattened grid storage for cache‑efficient traversal  
+- binary‑heap open list  
+- multiple examples and Criterion benchmarks  
+
+These additions produce smoother, more natural trajectories and match the behavior of the upstream algorithm.
 
 ---
 
-## Key Differences from the C++ Version
+## **Key Differences from the C++ Version**
 
-### Standalone Rust Engine
-The planner no longer depends on ROS2 build systems or navigation interfaces.  
-The algorithm runs as a pure Rust library with a small CLI wrapper.
+### **Standalone Rust Engine**
+Runs as a pure Rust library with optional CLI examples.  
+No ROS2 build system, no navigation stack dependencies.
 
-### Flattened Grid
-The original nested vector structure is replaced with a single contiguous `Vec<StatePoint>`.  
+### **Flattened Grid**
+The nested vector structure is replaced with a single contiguous `Vec<StatePoint>`.  
 This improves cache locality and simplifies indexing.
 
-### Binary‑Heap Open List
-The open list uses `BinaryHeap<Reverse<(k, x, y)>>`.  
-This replaces repeated sorting and reduces the cost of state insertion and extraction.
+### **Binary‑Heap Open List**
+The open list uses `BinaryHeap<Reverse<(k, x, y)>>`, reducing insertion/extraction overhead compared to repeated sorting.
 
-### Safe Map Access
-All map access is bounds‑checked.  
-The planner avoids panics and returns structured errors when states are invalid.
+### **Safe Map Access**
+All map access is bounds‑checked, preventing panics and returning structured errors for invalid states.
 
-### JSON Virtual Walls
-The planner loads virtual walls and configuration files through `serde`.
+### **Full Path Optimization Pipeline**
+The Rust port includes the complete post‑processing stages:
+
+- **Ray‑tracing reduction** using `cutoff_distance`  
+- **Potential‑field smoothing** using `repulsion_gain` and `potential_field_radius`  
+
+These stages were part of the original C++ planner but are often omitted in ports.
+
+### **JSON Virtual Walls**
+Virtual walls and virtual paths are loaded through `serde`, allowing external configuration of passable and non‑passable zones.
 
 ---
 
-## Parameters
-
-The planner uses the following configuration parameters:
+## **Parameters**
 
 | Parameter | Unit | Default | Description |
 | --- | --- | --- | --- |
 | `goal_distance_threshold` | m | `0.3` | Distance from origin to consider the goal reached |
 | `neighbor_distance_threshold` | m | `0.1` | Distance threshold for replanning |
 | `occupancy_threshold` | - | `64` | Costmap cell weight threshold for obstacles |
-| `cutoff_distance` | cells | `16` | Raytracing cutoff distance |
+| `cutoff_distance` | cells | `16` | Ray‑tracing cutoff distance for path reduction |
 | `trajectory_optimizer/repulsion_gain` | - | `50.0` | Repulsive potential gain |
-| `trajectory_optimizer/potential_field_radius` | cells | `10` | Radius for potential field |
+| `trajectory_optimizer/potential_field_radius` | cells | `10` | Radius for potential‑field smoothing |
 | `erosion/enable` | - | `false` | Enable map erosion |
 | `erosion/erosion_gap` | cells | `2` | Erosion gap |
 
 ---
 
-## Performance Notes
+## **Examples**
 
-The binary‑heap open list reduces the cost of D\* state management.  
-On medium and large maps, the Rust port shows significant reductions in planning time.
+All examples are documented in:
+
+**`examples/README.md`**
+
+This includes:
+
+- basic usage  
+- dynamic obstacles  
+- maze navigation  
+- virtual walls  
+- potential‑field optimization  
+- weighted costmaps  
+- neighbor modes  
+- large‑map stress tests  
+
+Run any example:
+
+```bash
+cargo run --example minimal
+```
+
+---
+
+## **Benchmarks**
+
+Criterion benchmarks are provided under `benches/`:
+
+- core D\* performance  
+- costmap initialization  
+- path planning  
+- potential‑field optimization  
+- large‑map stress tests  
+- neighbor‑mode comparison  
+- weighted costmap detours  
+
+Run all benchmarks:
+
+```bash
+cargo bench
+```
+
+---
+
+## **Performance Notes**
+
+The binary‑heap open list significantly reduces the cost of D\* state management.  
+Flattened grid storage and safe neighbor traversal further improve performance.
 
 Example results on a mid‑range laptop:
 
@@ -73,11 +134,11 @@ Example results on a mid‑range laptop:
 | 200×200 map | ~192 ms | ~12 ms |
 | 500×500 map | ~2.95 s | ~85 ms |
 
-These results depend on hardware and map structure.
+Actual performance depends on hardware, map structure, and whether path optimization is enabled.
 
 ---
 
-## Usage
+## **Usage**
 
 Run the planner:
 
