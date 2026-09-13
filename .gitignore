@@ -1,0 +1,12 @@
+# Cargo compiled binaries and libraries
+/target/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific generated files
+.DS_Store
+Thumbs.db
