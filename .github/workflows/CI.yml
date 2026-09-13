@@ -32,4 +32,11 @@ jobs:
 
       - name: Run examples
         run: |
-          cargo run --example test_planner
+          cargo run --example corridor
+          cargo run --example dynamic
+          cargo run --example maze
+          cargo run --example minimal
+          cargo run --example planner
+          cargo run --example u_shape
+          cargo run --example virtual_paths
+          cargo run --example virtual_walls_json

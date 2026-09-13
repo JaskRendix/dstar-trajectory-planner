@@ -10,3 +10,6 @@
 # OS-specific generated files
 .DS_Store
 Thumbs.db
+
+# Temporary example files
+virtual_paths_tmp.json
