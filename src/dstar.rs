@@ -1,20 +1,8 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use std::error::Error;
-use std::fmt;
 
+use crate::dstar_error::DStarError;
 use crate::state_map::{StateMap, StateTag};
-
-#[derive(Debug)]
-pub struct DStarError(pub String);
-
-impl fmt::Display for DStarError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl Error for DStarError {}
 
 pub struct DStar {
     map: StateMap,

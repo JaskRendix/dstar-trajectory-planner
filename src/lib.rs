@@ -1,4 +1,5 @@
 pub mod dstar;
+pub mod dstar_error;
 pub mod map_loader;
 pub mod planner;
 pub mod state_map;

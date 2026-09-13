@@ -3,7 +3,8 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-use crate::dstar::{DStar, DStarError};
+use crate::dstar::DStar;
+use crate::dstar_error::DStarError;
 use crate::state_map::{StateMap, StateTag};
 
 #[derive(Serialize, Deserialize, Debug)]
