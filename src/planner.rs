@@ -41,11 +41,8 @@ pub struct DStarGlobalPlanner {
     erosion: bool,
     erosion_gap: i64,
     cutoff_distance: i32,
-
     ready_paths: Vec<Vec<(f64, f64)>>,
     enable_ready_paths: bool,
-
-    // NEW: verbosity flag
     verbose: bool,
 }
 
@@ -82,7 +79,6 @@ impl DStarGlobalPlanner {
         }
     }
 
-    // NEW: setter
     pub fn set_verbose(&mut self, value: bool) {
         self.verbose = value;
     }
@@ -154,6 +150,10 @@ impl DStarGlobalPlanner {
                 }
             }
         }
+    }
+
+    pub fn grid(&self) -> Option<&StateMap> {
+        self.generator.as_ref().map(|g| g.grid())
     }
 
     pub fn initialize(

@@ -39,6 +39,10 @@ impl DStar {
         self.r_field = if val > 2 { val } else { 2 };
     }
 
+    pub fn grid(&self) -> &StateMap {
+        &self.map
+    }
+
     fn get_kmin(&self) -> i64 {
         match self.open_list.peek() {
             Some(Reverse((k, _, _))) => *k,
@@ -281,7 +285,8 @@ impl DStar {
         self.trace_path()
     }
 
-    fn trace_path(&mut self) -> Result<Vec<(i64, i64)>, DStarError> {
+    /// Draft path: follow backpointers from origin to destination.
+    fn build_draft_path(&self) -> Vec<(i64, i64)> {
         let mut draft_path = Vec::new();
         let mut current = self.origin;
 
@@ -294,12 +299,186 @@ impl DStar {
             current = p.backpointer;
         }
 
+        draft_path
+    }
+
+    /// Reduced path: ray-tracing with cutoff_distance, ported from C++.
+    fn reduce_path(&self, draft: &[(i64, i64)]) -> Result<Vec<(i64, i64)>, DStarError> {
+        if draft.len() <= 1 {
+            return Err(DStarError(
+                "The draft path list is empty, check target position".into(),
+            ));
+        }
+
+        let origin = draft[0];
+        let destination = *draft.last().unwrap();
+
+        let mut reduced = Vec::new();
+        reduced.push(origin);
+
+        let mut current_viewpoint = origin;
+        let mut prev_visible = draft.get(1).copied();
+        let mut last_visible = draft.get(2).copied();
+
+        if prev_visible.is_none() || last_visible.is_none() {
+            return Err(DStarError(
+                "Nothing to reduce, check target position".into(),
+            ));
+        }
+
+        while last_visible != Some(destination) {
+            let (cx, cy) = current_viewpoint;
+            let (px, py) = prev_visible.unwrap();
+            let (lx, ly) = last_visible.unwrap();
+
+            let current_coord = (cx as f64, cy as f64);
+            let proposed_coord = (lx as f64, ly as f64);
+            let prev_coord = (px as f64, py as f64);
+
+            let (current_x, current_y) = current_coord;
+            let (proposed_x, proposed_y) = proposed_coord;
+            let (prev_x, prev_y) = prev_coord;
+
+            let hypo = ((current_x - proposed_x).powi(2) + (current_y - proposed_y).powi(2)).sqrt();
+            let cos_theta = (proposed_x - current_x) / hypo;
+            let sin_theta = (proposed_y - current_y) / hypo;
+
+            let mut ray_x = current_x;
+            let mut ray_y = current_y;
+            let mut ray_traced = true;
+
+            while ((ray_x - proposed_x).powi(2) + (ray_y - proposed_y).powi(2)).sqrt() >= 1.0 {
+                ray_x += cos_theta;
+                ray_y += sin_theta;
+
+                let dx = ray_x - prev_x;
+                let dy = ray_y - prev_y;
+                let dist_prev = (dx * dx + dy * dy).sqrt();
+
+                let xi = ray_x.round() as i64;
+                let yj = ray_y.round() as i64;
+
+                let cutoff = self.cutoff_distance as f64;
+
+                if dist_prev > cutoff {
+                    ray_traced = false;
+                    break;
+                }
+
+                if let Some(p) = self.map.point_ref(xi, yj) {
+                    if p.tag == StateTag::Obstacle {
+                        ray_traced = false;
+                        break;
+                    }
+                } else {
+                    ray_traced = false;
+                    break;
+                }
+            }
+
+            if !ray_traced {
+                reduced.push(prev_visible.unwrap());
+                current_viewpoint = prev_visible.unwrap();
+            }
+
+            prev_visible = last_visible;
+            let idx = draft
+                .iter()
+                .position(|&(x, y)| x == last_visible.unwrap().0 && y == last_visible.unwrap().1)
+                .unwrap();
+            last_visible = draft.get(idx + 1).copied();
+            if last_visible.is_none() {
+                break;
+            }
+        }
+
+        reduced.push(destination);
+        Ok(reduced)
+    }
+
+    /// Optimized path: potential-field smoothing, ported from C++.
+    fn optimize_path(&mut self, reduced: &[(i64, i64)]) -> Vec<(i64, i64)> {
+        let mut optimized = Vec::new();
+        if reduced.is_empty() {
+            return optimized;
+        }
+
+        optimized.push(reduced[0]); // origin
+
+        for &(cx, cy) in reduced.iter().skip(1).take(reduced.len().saturating_sub(2)) {
+            let radius = self.r_field as i64;
+
+            let mut free = Vec::new();
+            let mut occupied = Vec::new();
+
+            for (nx, ny) in self.map.neighborhood(cx, cy, radius) {
+                if let Some(p) = self.map.point_ref(nx, ny) {
+                    if p.tag == StateTag::Obstacle {
+                        occupied.push((nx, ny));
+                    } else {
+                        free.push((nx, ny));
+                    }
+                }
+            }
+
+            if free.is_empty() || occupied.is_empty() {
+                optimized.push((cx, cy));
+                continue;
+            }
+
+            let mut potentials = Vec::with_capacity(free.len());
+
+            for &(fx, fy) in &free {
+                let (px, py) = self.map.point_ref(fx, fy).unwrap().float_coords();
+                let mut repulsion = 0.0;
+
+                for &(ox, oy) in &occupied {
+                    let (oxf, oyf) = self.map.point_ref(ox, oy).unwrap().float_coords();
+                    let dx = oxf - px;
+                    let dy = oyf - py;
+                    let dist2 = dx * dx + dy * dy;
+                    if dist2 > 0.0 {
+                        repulsion += self.repulsion_gain / dist2;
+                    }
+                }
+
+                potentials.push(repulsion);
+            }
+
+            if let Some((min_idx, min_val)) = potentials
+                .iter()
+                .enumerate()
+                .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            {
+                let (nx, ny) = free[min_idx];
+                if let Some(p) = self.map.point(nx, ny) {
+                    p.potential = *min_val;
+                }
+                optimized.push((nx, ny));
+            } else {
+                optimized.push((cx, cy));
+            }
+        }
+
+        if let Some(&last) = reduced.last() {
+            optimized.push(last); // destination
+        }
+
+        optimized
+    }
+
+    fn trace_path(&mut self) -> Result<Vec<(i64, i64)>, DStarError> {
+        let draft_path = self.build_draft_path();
+
         if draft_path.len() <= 1 {
             return Err(DStarError(
                 "The draft path list is empty, check target position".into(),
             ));
         }
 
-        Ok(draft_path)
+        let reduced = self.reduce_path(&draft_path)?;
+        let optimized = self.optimize_path(&reduced);
+
+        Ok(optimized)
     }
 }

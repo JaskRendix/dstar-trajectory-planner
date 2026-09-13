@@ -14,3 +14,19 @@ criterion = "0.8"
 [[bench]]
 name = "dstar_bench"
 harness = false
+
+[[bench]]
+name = "large_map_bench"
+harness = false
+
+[[bench]]
+name = "neighbor_modes_bench"
+harness = false
+
+[[bench]]
+name = "potential_field_bench"
+harness = false
+
+[[bench]]
+name = "weighted_costmap_bench"
+harness = false

@@ -34,9 +34,13 @@ jobs:
         run: |
           cargo run --example corridor
           cargo run --example dynamic
+          cargo run --example large_map
           cargo run --example maze
           cargo run --example minimal
+          cargo run --example neighbor_modes
           cargo run --example planner
+          cargo run --example potential_field
           cargo run --example u_shape
           cargo run --example virtual_paths
           cargo run --example virtual_walls_json
+          cargo run --example weighted_costmap

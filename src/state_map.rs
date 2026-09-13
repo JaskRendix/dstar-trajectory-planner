@@ -56,6 +56,26 @@ pub struct StateMap {
 }
 
 impl StateMap {
+    /// Returns all cells within a circular neighborhood of radius `radius`.
+    pub fn neighborhood(&self, x: i64, y: i64, radius: i64) -> Vec<(i64, i64)> {
+        let mut result = Vec::new();
+        for dx in -radius..=radius {
+            for dy in -radius..=radius {
+                let nx = x + dx;
+                let ny = y + dy;
+                if nx >= 0
+                    && nx < self.width
+                    && ny >= 0
+                    && ny < self.height
+                    && dx * dx + dy * dy <= radius * radius
+                {
+                    result.push((nx, ny));
+                }
+            }
+        }
+        result
+    }
+
     pub fn new(width: i64, height: i64) -> Self {
         let mut grid = Vec::with_capacity((width * height) as usize);
 
