@@ -76,8 +76,7 @@ impl DStarGlobalPlanner {
             cutoff_distance: 16,
             ready_paths: Vec::new(),
             enable_ready_paths: false,
-
-            verbose: false, // default: silent
+            verbose: false,
         }
     }
 
@@ -167,13 +166,11 @@ impl DStarGlobalPlanner {
 
             if new_path.len() >= 2 {
                 self.ready_paths.push(new_path);
-            } else {
-                if self.verbose {
-                    println!(
-                        "Cannot register the freepath selector: the selector \"{}\" should contain more than one point!",
-                        path.name
-                    );
-                }
+            } else if self.verbose {
+                println!(
+                    "Cannot register the freepath selector: the selector \"{}\" should contain more than one point!",
+                    path.name
+                );
             }
         }
     }
@@ -228,12 +225,14 @@ impl DStarGlobalPlanner {
         }
 
         if self.erosion {
+            let mut newly_eroded = Vec::new();
+            let eg = self.erosion_gap;
+
             for i in 0..width {
                 for j in 0..height {
                     if let Some(p) = grid.point_ref(i, j)
                         && p.tag == StateTag::Obstacle
                     {
-                        let eg = self.erosion_gap;
                         for u in -eg..=eg {
                             for v in -eg..=eg {
                                 if u == 0 && v == 0 {
@@ -241,14 +240,20 @@ impl DStarGlobalPlanner {
                                 }
                                 let xi = i + u;
                                 let yj = j + v;
-                                if let Some(target_p) = grid.point(xi, yj)
+                                if let Some(target_p) = grid.point_ref(xi, yj)
                                     && target_p.tag != StateTag::Obstacle
                                 {
-                                    target_p.tag = StateTag::Obstacle;
+                                    newly_eroded.push((xi, yj));
                                 }
                             }
                         }
                     }
+                }
+            }
+
+            for (xi, yj) in newly_eroded {
+                if let Some(target_p) = grid.point(xi, yj) {
+                    target_p.tag = StateTag::Obstacle;
                 }
             }
         }
