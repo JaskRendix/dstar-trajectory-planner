@@ -134,7 +134,7 @@ cargo run -- --help
 | `--potential-radius <i32>` | `10` | Radius for potential‑field smoothing |
 | `--cutoff-distance <i32>` | `16` | Ray‑tracing cutoff distance |
 | `--occupancy-threshold <i32>` | `64` | Costmap obstacle threshold |
-| `--neighbor-mode <four|eight>` | `eight` | Connectivity mode |
+| `--neighbor-mode <four\|eight>` | `eight` | Connectivity mode (case-insensitive) |
 | `--erosion <bool>` | `false` | Enable map erosion |
 | `--erosion-gap <i64>` | `2` | Erosion radius |
 | `--start-x <f64>` | `0.0` | Start coordinate X |
