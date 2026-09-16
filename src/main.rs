@@ -1,5 +1,6 @@
 use clap::Parser;
 use dstar_trajectory_planner::{DStarGlobalPlanner, NeighborMode};
+use std::process;
 
 #[derive(Parser)]
 #[command(name = "dstar-cli", about = "CLI interface for D* trajectory planner")]
@@ -22,7 +23,7 @@ struct Args {
     #[arg(long)]
     verbose: bool,
 
-    #[arg(long, default_value = "false")]
+    #[arg(long)]
     erosion: bool,
 
     #[arg(long, default_value = "2")]
@@ -49,7 +50,7 @@ struct Args {
     #[arg(long, default_value = "")]
     paths_file: String,
 
-    #[arg(long, default_value = "false")]
+    #[arg(long)]
     enable_ready_paths: bool,
 }
 
@@ -63,7 +64,7 @@ fn main() {
         map_data[idx] = args.occupancy_threshold as u8;
     }
 
-    // Planner
+    // Planner setup
     let mut planner = DStarGlobalPlanner::new();
     planner.set_verbose(args.verbose);
     planner.set_repulsion_gain(args.repulsion_gain);
@@ -72,14 +73,11 @@ fn main() {
     planner.set_erosion(args.erosion);
     planner.set_erosion_gap(args.erosion_gap);
 
-    match args.neighbor_mode.as_str() {
+    match args.neighbor_mode.to_lowercase().as_str() {
         "four" => planner.set_neighbor_mode(NeighborMode::Four),
         "eight" => planner.set_neighbor_mode(NeighborMode::Eight),
-        _ => {
-            println!(
-                "Unknown neighbor mode '{}', using default (eight)",
-                args.neighbor_mode
-            );
+        other => {
+            eprintln!("Unknown neighbor mode '{}', using default (eight)", other);
             planner.set_neighbor_mode(NeighborMode::Eight);
         }
     }
@@ -125,7 +123,8 @@ fn main() {
             }
         }
         Err(e) => {
-            println!("Path planning failed: {}", e);
+            eprintln!("Path planning failed: {}", e);
+            process::exit(1);
         }
     }
 }
