@@ -175,7 +175,7 @@ impl DStar {
             }
 
             let y_cost_actual = y_point.cost_actual;
-            let y_weight = self.map.point_ref(y_coord.0, y_coord.1).unwrap().weight;
+            let y_weight = y_point.weight;
 
             if y_tag == StateTag::Closed
                 && y_cost_actual < k_old
@@ -337,13 +337,9 @@ impl DStar {
             let (px, py) = prev_visible.unwrap();
             let (lx, ly) = last_visible.unwrap();
 
-            let current_coord = (cx as f64, cy as f64);
-            let proposed_coord = (lx as f64, ly as f64);
-            let prev_coord = (px as f64, py as f64);
-
-            let (current_x, current_y) = current_coord;
-            let (proposed_x, proposed_y) = proposed_coord;
-            let (prev_x, prev_y) = prev_coord;
+            let (current_x, current_y) = (cx as f64, cy as f64);
+            let (proposed_x, proposed_y) = (lx as f64, ly as f64);
+            let (prev_x, prev_y) = (px as f64, py as f64);
 
             let hypo = ((current_x - proposed_x).powi(2) + (current_y - proposed_y).powi(2)).sqrt();
             let cos_theta = (proposed_x - current_x) / hypo;
@@ -454,7 +450,7 @@ impl DStar {
             if let Some((min_idx, min_val)) = potentials
                 .iter()
                 .enumerate()
-                .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .min_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             {
                 let (nx, ny) = free[min_idx];
                 if let Some(p) = self.map.point(nx, ny) {
