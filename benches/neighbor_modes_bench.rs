@@ -7,8 +7,8 @@ fn bench_diagonal() {
     let map_data = vec![0u8; (width * height) as usize];
 
     let mut planner = DStarGlobalPlanner::new();
-    planner.initialize(width, height, &map_data, false, "");
     planner.set_neighbor_mode(NeighborMode::Eight);
+    planner.initialize(width, height, &map_data, false, "");
 
     let start = (5.0, 5.0);
     let goal = (75.0, 75.0);
@@ -28,8 +28,8 @@ fn bench_manhattan() {
     let map_data = vec![0u8; (width * height) as usize];
 
     let mut planner = DStarGlobalPlanner::new();
-    planner.initialize(width, height, &map_data, false, "");
     planner.set_neighbor_mode(NeighborMode::Four);
+    planner.initialize(width, height, &map_data, false, "");
 
     let start = (5.0, 5.0);
     let goal = (75.0, 75.0);
