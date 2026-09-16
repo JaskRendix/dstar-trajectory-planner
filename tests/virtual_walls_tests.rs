@@ -169,3 +169,26 @@ fn test_world_to_map_bounds() {
 
     module.apply_to_grid(&mut grid, 10, 10, 1.0, 0.0, 0.0, 200, 0);
 }
+
+#[test]
+fn test_empty_polygon_coordinates() {
+    let json_data = r#"{
+        "vwalls": [
+            {
+                "name": "empty_wall",
+                "polygon": [] 
+            }
+        ]
+    }"#;
+
+    let mut temp_file = NamedTempFile::new().unwrap();
+    temp_file.write_all(json_data.as_bytes()).unwrap();
+    let path_str = temp_file.path().to_str().unwrap();
+
+    let mut module = VirtualWallsModule::new(0);
+    module.parse_walls_json(path_str);
+
+    let mut grid = vec![0u8; 100];
+    module.apply_to_grid(&mut grid, 10, 10, 1.0, 0.0, 0.0, 200, 0);
+    assert!(grid.iter().all(|&v| v == 0));
+}

@@ -40,6 +40,38 @@ impl VirtualWallsModule {
         }
     }
 
+    /// Helper to parse raw polygon f64 chunks into coordinate pairs
+    fn parse_polygon_points(polygon: &[f64], name: &str, is_path: bool) -> Option<Vec<(f64, f64)>> {
+        if !polygon.len().is_multiple_of(2) {
+            println!(
+                "Cannot parse {}: coordinates are not pairable for '{}'",
+                if is_path { "path" } else { "wall" },
+                name
+            );
+            return None;
+        }
+
+        let points: Vec<(f64, f64)> = polygon
+            .chunks(2)
+            .filter(|chunk| chunk.len() == 2)
+            .map(|chunk| (chunk[0], chunk[1]))
+            .collect();
+
+        if is_path && points.len() < 2 {
+            println!(
+                "Freepath selector '{}' must contain more than one point",
+                name
+            );
+            return None;
+        }
+
+        if !is_path && points.is_empty() {
+            return None;
+        }
+
+        Some(points)
+    }
+
     pub fn parse_walls_json(&mut self, filename: &str) {
         if !Path::new(filename).exists() {
             println!(
@@ -71,22 +103,7 @@ impl VirtualWallsModule {
 
         if let Some(vwalls) = walls_data.vwalls {
             for wall in vwalls {
-                if wall.polygon.len() % 2 != 0 {
-                    println!(
-                        "Cannot parse wall '{}': coordinates are not pairable",
-                        wall.name
-                    );
-                    continue;
-                }
-
-                let mut points = Vec::new();
-                for chunk in wall.polygon.chunks(2) {
-                    if chunk.len() == 2 {
-                        points.push((chunk[0], chunk[1]));
-                    }
-                }
-
-                if !points.is_empty() {
+                if let Some(points) = Self::parse_polygon_points(&wall.polygon, &wall.name, false) {
                     self.walls.push(points);
                     self.walls_available = true;
                 }
@@ -95,29 +112,9 @@ impl VirtualWallsModule {
 
         if let Some(vpaths) = walls_data.vpaths {
             for path in vpaths {
-                if path.polygon.len() % 2 != 0 {
-                    println!(
-                        "Cannot parse path '{}': coordinates are not pairable",
-                        path.name
-                    );
-                    continue;
-                }
-
-                let mut points = Vec::new();
-                for chunk in path.polygon.chunks(2) {
-                    if chunk.len() == 2 {
-                        points.push((chunk[0], chunk[1]));
-                    }
-                }
-
-                if points.len() >= 2 {
+                if let Some(points) = Self::parse_polygon_points(&path.polygon, &path.name, true) {
                     self.paths.push(points);
                     self.paths_available = true;
-                } else {
-                    println!(
-                        "Freepath selector '{}' must contain more than one point",
-                        path.name
-                    );
                 }
             }
         }
@@ -135,7 +132,6 @@ impl VirtualWallsModule {
         lethal_cost: u8,
         free_cost: u8,
     ) {
-        // Helper to convert world coordinates to grid cell indices
         let world_to_map = |wx: f64, wy: f64| -> Option<(usize, usize)> {
             let mx = ((wx - origin_x) / resolution).round() as isize;
             let my = ((wy - origin_y) / resolution).round() as isize;
@@ -146,7 +142,7 @@ impl VirtualWallsModule {
             }
         };
 
-        // Fill default cost if specified
+        // Fill default cost if specified (mutably borrows grid)
         if self.default_cost > 0 {
             for cell in grid.iter_mut() {
                 if *cell <= self.default_cost {
@@ -155,7 +151,40 @@ impl VirtualWallsModule {
             }
         }
 
-        // Apply virtual walls (Lethal Obstacles via Raycasting / Point Inclusion)
+        // Helper to rasterize a line using Bresenham's algorithm
+        // (Defined AFTER the iter_mut loop to satisfy the borrow checker)
+        let mut draw_line = |x0: usize, y0: usize, x1: usize, y1: usize, cost: u8| {
+            let dx = (x1 as isize - x0 as isize).abs();
+            let dy = (y1 as isize - y0 as isize).abs();
+            let sx = if x0 < x1 { 1 } else { -1 };
+            let sy = if y0 < y1 { 1 } else { -1 };
+            let mut err = dx - dy;
+            let mut cx = x0 as isize;
+            let mut cy = y0 as isize;
+
+            loop {
+                if cx >= 0 && cx < width as isize && cy >= 0 && cy < height as isize {
+                    let idx = (cy as usize) * width + (cx as usize);
+                    if idx < grid.len() {
+                        grid[idx] = cost;
+                    }
+                }
+                if cx == x1 as isize && cy == y1 as isize {
+                    break;
+                }
+                let e2 = 2 * err;
+                if e2 > -dy {
+                    err -= dy;
+                    cx += sx;
+                }
+                if e2 < dx {
+                    err += dx;
+                    cy += sy;
+                }
+            }
+        };
+
+        // Apply virtual walls (Lethal Obstacles via Line Segments)
         if self.walls_available {
             for polygon in &self.walls {
                 let map_points: Vec<(usize, usize)> = polygon
@@ -163,14 +192,21 @@ impl VirtualWallsModule {
                     .filter_map(|&(wx, wy)| world_to_map(wx, wy))
                     .collect();
 
+                // Draw lines between consecutive points
+                for window in map_points.windows(2) {
+                    draw_line(
+                        window[0].0,
+                        window[0].1,
+                        window[1].0,
+                        window[1].1,
+                        lethal_cost,
+                    );
+                }
+                // Close the polygon loop if it has 3 or more points
                 if map_points.len() > 2 {
-                    // Simple bounding box or scanline fill can be implemented here using pure Rust geometry
-                    for &(mx, my) in &map_points {
-                        let idx = my * width + mx;
-                        if idx < grid.len() {
-                            grid[idx] = lethal_cost;
-                        }
-                    }
+                    let first = *map_points.first().unwrap();
+                    let last = *map_points.last().unwrap();
+                    draw_line(last.0, last.1, first.0, first.1, lethal_cost);
                 }
             }
         }
@@ -184,38 +220,13 @@ impl VirtualWallsModule {
                     .collect();
 
                 for window in map_points.windows(2) {
-                    let (x0, y0) = window[0];
-                    let (x1, y1) = window[1];
-
-                    // Bresenham's line algorithm in pure Rust for path clearing
-                    let dx = (x1 as isize - x0 as isize).abs();
-                    let dy = (y1 as isize - y0 as isize).abs();
-                    let sx = if x0 < x1 { 1 } else { -1 };
-                    let sy = if y0 < y1 { 1 } else { -1 };
-                    let mut err = dx - dy;
-                    let mut cx = x0 as isize;
-                    let mut cy = y0 as isize;
-
-                    loop {
-                        if cx >= 0 && cx < width as isize && cy >= 0 && cy < height as isize {
-                            let idx = (cy as usize) * width + (cx as usize);
-                            if idx < grid.len() {
-                                grid[idx] = free_cost;
-                            }
-                        }
-                        if cx == x1 as isize && cy == y1 as isize {
-                            break;
-                        }
-                        let e2 = 2 * err;
-                        if e2 > -dy {
-                            err -= dy;
-                            cx += sx;
-                        }
-                        if e2 < dx {
-                            err += dx;
-                            cy += sy;
-                        }
-                    }
+                    draw_line(
+                        window[0].0,
+                        window[0].1,
+                        window[1].0,
+                        window[1].1,
+                        free_cost,
+                    );
                 }
             }
         }
