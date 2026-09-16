@@ -14,6 +14,18 @@ pub enum NeighborMode {
     Eight,
 }
 
+const FOUR_DELTAS: &[(i64, i64)] = &[(1, 0), (-1, 0), (0, 1), (0, -1)];
+const EIGHT_DELTAS: &[(i64, i64)] = &[
+    (1, 0),
+    (-1, 0),
+    (0, 1),
+    (0, -1),
+    (1, 1),
+    (1, -1),
+    (-1, 1),
+    (-1, -1),
+];
+
 #[derive(Clone, Debug)]
 pub struct StatePoint {
     pub x: i64,
@@ -126,27 +138,12 @@ impl StateMap {
     pub fn neighbors(&self, x: i64, y: i64, mode: NeighborMode) -> Vec<(i64, i64)> {
         let mut result = Vec::with_capacity(8);
 
-        // 4‑connected
-        const FOUR: &[(i64, i64)] = &[(1, 0), (-1, 0), (0, 1), (0, -1)];
-
-        // 8‑connected (includes diagonals)
-        const EIGHT: &[(i64, i64)] = &[
-            (1, 0),
-            (-1, 0),
-            (0, 1),
-            (0, -1),
-            (1, 1),
-            (1, -1),
-            (-1, 1),
-            (-1, -1),
-        ];
-
         let deltas = match mode {
-            NeighborMode::Four => FOUR,
-            NeighborMode::Eight => EIGHT,
+            NeighborMode::Four => FOUR_DELTAS,
+            NeighborMode::Eight => EIGHT_DELTAS,
         };
 
-        for (dx, dy) in deltas {
+        for &(dx, dy) in deltas {
             let nx = x + dx;
             let ny = y + dy;
 
